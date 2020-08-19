@@ -818,6 +818,12 @@ namespace OxyPlot.Axes
         /// <param name="rc">The render context.</param>
         public virtual void Measure(IRenderContext rc)
         {
+            if (this.Position == AxisPosition.None)
+            {
+                this.DesiredMargin = new OxyThickness(0);
+                return;
+            }
+
             this.GetTickValues(out var majorLabelValues, out _, out _);
 
             var maximumTextSize = new OxySize();
@@ -863,7 +869,7 @@ namespace OxyPlot.Axes
                 case AxisPosition.Bottom:
                     marginBottom = margin + maximumTextSize.Height;
                     break;
-                case AxisPosition.None:
+                case AxisPosition.All:
                     marginLeft = marginRight = margin + maximumTextSize.Width;
                     marginTop = marginBottom = margin + maximumTextSize.Height;
                     break;
@@ -1015,6 +1021,11 @@ namespace OxyPlot.Axes
         /// <param name="pass">The pass.</param>
         public virtual void Render(IRenderContext rc, int pass)
         {
+            if (this.Position == AxisPosition.None)
+            {
+                return;
+            }
+
             var r = new HorizontalAndVerticalAxisRenderer(rc, this.PlotModel);
             r.Render(this, pass);
         }
@@ -1616,6 +1627,9 @@ namespace OxyPlot.Axes
         /// Calculates the actual maximum value of the axis, including the <see cref="MaximumPadding" />.
         /// </summary>
         /// <returns>The new actual maximum value of the axis.</returns>
+        /// <remarks>
+        /// Must be called before <see cref="CalculateActualMinimum" />
+        /// </remarks>
         protected virtual double CalculateActualMaximum()
         {
             var actualMaximum = this.DataMaximum;
@@ -1642,6 +1656,9 @@ namespace OxyPlot.Axes
         /// Calculates the actual minimum value of the axis, including the <see cref="MinimumPadding" />.
         /// </summary>
         /// <returns>The new actual minimum value of the axis.</returns>
+        /// <remarks>
+        /// Must be called after <see cref="CalculateActualMaximum" />
+        /// </remarks>
         protected virtual double CalculateActualMinimum()
         {
             var actualMinimum = this.DataMinimum;
@@ -1657,7 +1674,8 @@ namespace OxyPlot.Axes
             {
                 double x1 = this.PreTransform(this.ActualMaximum);
                 double x0 = this.PreTransform(actualMinimum);
-                double dx = this.MinimumPadding * (x1 - x0);
+                double existingPadding = this.MaximumPadding;
+                double dx = this.MinimumPadding * ((x1 - x0) / (1.0 + existingPadding));
                 return this.PostInverseTransform(x0 - dx);
             }
 
