@@ -17,6 +17,8 @@ namespace ExampleLibrary
     using OxyPlot.Axes;
     using OxyPlot.Series;
     using OxyPlot.Legends;
+    using System.Reflection;
+    using System.Linq;
 
     [Examples("Z1 Issues")]
     public class Issues
@@ -2357,6 +2359,155 @@ namespace ExampleLibrary
             plotModel1.Series.Add(scatter);
 
             return plotModel1;
+        }
+
+        [Example("#1659: Last line of series titles in legend not displayed in Chinese on WinForms (Closed)")]
+        public static PlotModel LastLineOfSeriesTitlesNotDisplayedInChineseOnWindows()
+        {
+            var plot = new PlotModel() { Title = "#1659: Last line of series titles in legend not displayed in Chinese on WinForms" };
+
+            plot.Legends.Add(new Legend() { LegendTitle = "漂亮的天鹅" });
+            plot.Series.Add(new FunctionSeries(x => x, 0, 1, 0.1, "漂亮的天鹅"));
+            plot.Series.Add(new FunctionSeries(x => x, 0, 1, 0.1, "漂亮的天鹅\n友好的天鹅"));
+            plot.Series.Add(new FunctionSeries(x => x, 0, 1, 0.1, "漂亮的天鹅\n友好的天鹅\n尼斯天鹅"));
+
+            return plot;
+        }
+
+        [Example("#1685: ContourSeries produce fake connections")]
+        public static PlotModel ContourSeriesProduceFakeConnections()
+        {
+            var plot = new PlotModel();
+
+            var data = new double[64, 64];
+            using (var stream = typeof(Issues).GetTypeInfo().Assembly.GetManifestResourceStream("ExampleLibrary.Resources.DodgyContourData.tsv"))
+            {
+                using (var reader = new System.IO.StreamReader(stream))
+                {
+                    for (int r = 0; r < data.GetLength(0); r++)
+                    {
+                        var line = reader.ReadLine();
+                        var row = line.Split('\t');
+
+                        for (int c = 0; c < data.GetLength(0); c++)
+                        {
+                            data[r, c] = double.Parse(row[c]);
+                        }
+                    }
+                }
+            }
+
+            var xs = new double[64];
+            using (var stream = typeof(Issues).GetTypeInfo().Assembly.GetManifestResourceStream("ExampleLibrary.Resources.X.txt"))
+            {
+                using (var reader = new System.IO.StreamReader(stream))
+                {
+                    for (int i = 0; i < xs.Length; i++)
+                    {
+                        var line = reader.ReadLine();
+                        xs[i] = double.Parse(line);
+                    }
+                }
+            }
+
+            var ys = new double[64];
+            using (var stream = typeof(Issues).GetTypeInfo().Assembly.GetManifestResourceStream("ExampleLibrary.Resources.Y.txt"))
+            {
+                using (var reader = new System.IO.StreamReader(stream))
+                {
+                    for (int i = 0; i < ys.Length; i++)
+                    {
+                        var line = reader.ReadLine();
+                        ys[i] = double.Parse(line);
+                    }
+                }
+            }
+
+            double[] contourLevels = { 0.2, 0.4, 0.6, 0.8, 0.9, 1.0 };
+            double maxi = data.Max2D();
+
+            double[] tmp = new double[contourLevels.Length];
+            for (int i = 0; i < contourLevels.Length; i++)
+            {
+                tmp[i] = maxi * contourLevels[i];
+            }
+
+            var xaxis = new LogarithmicAxis() { Position = AxisPosition.Bottom };
+            var yaxis = new LogarithmicAxis() { Position = AxisPosition.Left };
+            var caxis = new LinearColorAxis() { Position = AxisPosition.Right, Palette = OxyPalettes.Gray(100) };
+
+            plot.Axes.Add(xaxis);
+            plot.Axes.Add(yaxis);
+            plot.Axes.Add(caxis);
+
+            var hs = new HeatMapSeries
+            {
+                Data = data,
+                X0 = xs.First(),
+                X1 = xs.Last(),
+                Y0 = ys.First(),
+                Y1 = ys.Last(),
+                CoordinateDefinition = HeatMapCoordinateDefinition.Center,
+            };
+
+            var cs = new ContourSeries
+            {
+                TextColor = OxyColors.Transparent,
+                LabelBackground = OxyColors.Transparent,
+                ContourLevels = tmp,
+                Data = data,
+                ColumnCoordinates = xs,
+                RowCoordinates = ys,
+            };
+
+            plot.Series.Add(hs);
+            plot.Series.Add(cs);
+
+            return plot;
+        }
+
+        [Example("#1716: DateTimeAxis sometimes ignores IntervalLength")]
+        public static PlotModel DateTimeAxisSometimesIgnoresIntervalLength()
+        {
+            var plot = new PlotModel();
+
+            plot.Title = "IntervalLength is ignored for large ranges with IntervalType of Years or Weeks";
+
+            var days = new DateTimeAxis
+            {
+                IntervalType = DateTimeIntervalType.Days,
+                Position = AxisPosition.Bottom,
+                PositionTier = 1,
+                Minimum = DateTimeAxis.ToDouble(new DateTime(2000, 1, 1)),
+                Maximum = DateTimeAxis.ToDouble(new DateTime(2001, 1, 1)),
+                Title = "Days (mostly fine)",
+            };
+
+            var weeks = new DateTimeAxis
+            {
+                IntervalType = DateTimeIntervalType.Weeks,
+                Position = AxisPosition.Bottom,
+                PositionTier = 2,
+                Minimum = DateTimeAxis.ToDouble(new DateTime(2000, 1, 1)),
+                Maximum = DateTimeAxis.ToDouble(new DateTime(2001, 1, 1)),
+                Title = "Weeks (nothing is fine)",
+            };
+
+            var years = new DateTimeAxis
+            {
+                IntervalType = DateTimeIntervalType.Years,
+                Position = AxisPosition.Bottom,
+                PositionTier = 3,
+                Minimum = DateTimeAxis.ToDouble(new DateTime(2000, 1, 1)),
+                Maximum = DateTimeAxis.ToDouble(new DateTime(2100, 1, 1)),
+                Title = "Years (minor ticks not fine)",
+            };
+
+            plot.Axes.Add(days);
+            plot.Axes.Add(weeks);
+            plot.Axes.Add(years);
+
+            return plot;
         }
 
         private class TimeSpanPoint
